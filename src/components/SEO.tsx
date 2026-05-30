@@ -7,6 +7,14 @@ interface SEOProps {
     canonicalUrl?: string;
     ogImage?: string;
     ogType?: "website" | "product";
+    productData?: {
+        name: string;
+        price: number;
+        currency?: string;
+        image?: string;
+        category?: string;
+        availability?: string;
+    };
 }
 
 const SEO = ({ 
@@ -15,7 +23,8 @@ const SEO = ({
     keywords, 
     canonicalUrl = "https://candlesbydreamers.com", 
     ogImage = "https://candlesbydreamers.com/logo.png", 
-    ogType = "website" 
+    ogType = "website",
+    productData
 }: SEOProps) => {
     useEffect(() => {
         // Update Document Title
@@ -63,17 +72,69 @@ const SEO = ({
         // Open Graph
         updateMeta("og:title", `${title} | Candles by Dreamers`, true);
         updateMeta("og:description", description, true);
-        updateMeta("og:type", ogType, true);
+        updateMeta("og:type", ogType === "product" ? "product" : "website", true);
         updateMeta("og:url", canonicalUrl, true);
         updateMeta("og:image", ogImage, true);
         updateMeta("og:site_name", "Candles by Dreamers", true);
+        updateMeta("og:locale", "en_IN", true);
+
+        // Product-specific OG tags
+        if (ogType === "product" && productData) {
+            updateMeta("product:price:amount", String(productData.price), true);
+            updateMeta("product:price:currency", productData.currency || "INR", true);
+            if (productData.category) {
+                updateMeta("product:category", productData.category, true);
+            }
+        }
 
         // Twitter Cards
         updateMeta("twitter:card", "summary_large_image");
         updateMeta("twitter:title", `${title} | Candles by Dreamers`);
         updateMeta("twitter:description", description);
         updateMeta("twitter:image", ogImage);
-    }, [title, description, keywords, canonicalUrl, ogImage, ogType]);
+
+        // JSON-LD Structured Data for Products
+        const existingLd = document.querySelector('script[data-seo-ld]');
+        if (existingLd) existingLd.remove();
+
+        if (ogType === "product" && productData) {
+            const ldJson = {
+                "@context": "https://schema.org",
+                "@type": "Product",
+                "name": productData.name,
+                "description": description,
+                "image": productData.image || ogImage,
+                "category": productData.category || "Scented Candles",
+                "brand": {
+                    "@type": "Brand",
+                    "name": "Candles by Dreamers"
+                },
+                "offers": {
+                    "@type": "Offer",
+                    "url": canonicalUrl,
+                    "priceCurrency": productData.currency || "INR",
+                    "price": productData.price,
+                    "availability": `https://schema.org/${productData.availability || "InStock"}`,
+                    "seller": {
+                        "@type": "Organization",
+                        "name": "Candles by Dreamers"
+                    }
+                }
+            };
+
+            const script = document.createElement("script");
+            script.type = "application/ld+json";
+            script.setAttribute("data-seo-ld", "true");
+            script.textContent = JSON.stringify(ldJson);
+            document.head.appendChild(script);
+        }
+
+        // Cleanup JSON-LD on unmount
+        return () => {
+            const ld = document.querySelector('script[data-seo-ld]');
+            if (ld) ld.remove();
+        };
+    }, [title, description, keywords, canonicalUrl, ogImage, ogType, productData]);
 
     return null;
 };

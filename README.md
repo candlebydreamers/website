@@ -1,73 +1,124 @@
-# React + TypeScript + Vite
+# Candles by Dreamers
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Premium hand-poured scented candles e-commerce store built with React, TypeScript, and Supabase.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend** — React 18, TypeScript, Vite, TailwindCSS
+- **Backend** — Supabase (PostgreSQL, Auth, Storage, Edge Functions)
+- **Payments** — Razorpay (server-side order creation + HMAC signature verification)
+- **Animations** — Framer Motion
+- **Routing** — React Router v6
+- **Deployment** — Vercel (frontend), Supabase Cloud (backend)
 
-## React Compiler
+## Prerequisites
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Node.js 18+
+- npm 9+
+- Supabase CLI (for edge function deployment)
+- A Supabase project
+- A Razorpay account
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1. Clone the repository
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone https://github.com/candlebydreamers/website.git
+cd website
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Install dependencies
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
+
+### 3. Set up environment variables
+
+Create a `.env` file in the project root with the following variables:
+
+```env
+# Supabase
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+
+# Admin Credentials
+VITE_ADMIN_EMAIL=
+VITE_ADMIN_PASSWORD=
+
+# Razorpay (public key only — secret key goes in Supabase Edge Function Secrets)
+VITE_RAZORPAY_KEY_ID=
+```
+
+> **Important:** The Razorpay secret key is never stored in `.env`. It is set as a Supabase Edge Function secret via the Supabase Dashboard.
+
+### 4. Set up the database
+
+Run the SQL migration files from `supabase/migrations/` in your Supabase SQL Editor in order:
+
+1. `20260528000000_init_candles_by_dreamers.sql` — Creates all tables, RLS policies, and seeds initial data
+2. `20260530000000_secure_order_rls.sql` — Tightens order security for Razorpay integration
+
+### 5. Deploy Edge Functions
+
+```bash
+supabase login
+supabase link --project-ref <your-project-ref>
+supabase functions deploy create-razorpay-order --no-verify-jwt
+supabase functions deploy verify-razorpay-payment --no-verify-jwt
+```
+
+Also set these secrets in the Supabase Dashboard under **Edge Functions → Secrets**:
+
+| Secret Name | Description |
+|---|---|
+| `RAZORPAY_KEY_ID` | Razorpay Key ID |
+| `RAZORPAY_KEY_SECRET` | Razorpay Secret Key |
+
+### 6. Start the dev server
+
+```bash
+npm run dev
+```
+
+The app will be available at `http://localhost:5173`.
+
+### 7. Build for production
+
+```bash
+npm run build
+```
+
+## Environment Variables Reference
+
+| Variable | Where It's Used | Description |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Frontend | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Frontend | Supabase anonymous/public key |
+| `VITE_ADMIN_EMAIL` | Frontend | Admin panel login email |
+| `VITE_ADMIN_PASSWORD` | Frontend | Admin panel login password |
+| `VITE_RAZORPAY_KEY_ID` | Frontend | Razorpay public key (opens checkout popup) |
+| `RAZORPAY_KEY_ID` | Edge Functions | Razorpay Key ID (server-side) |
+| `RAZORPAY_KEY_SECRET` | Edge Functions | Razorpay Secret Key (server-side, never in browser) |
+
+## Project Structure
+
+```
+├── public/                 # Static assets
+├── src/
+│   ├── assets/            # Images, banners, logos
+│   ├── components/        # Reusable UI components
+│   ├── context/           # React context (Cart)
+│   ├── hooks/             # Custom hooks
+│   ├── lib/               # Supabase client, utilities
+│   └── pages/             # Route pages
+├── supabase/
+│   ├── functions/         # Edge Functions (Razorpay integration)
+│   └── migrations/        # SQL migration files
+└── index.html
+```
+
+## License
+
+All rights reserved. © 2026 Candles by Dreamers.

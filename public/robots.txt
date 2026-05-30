@@ -1,0 +1,12 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin-panel
+Disallow: /checkout
+Disallow: /checkout-success
+Disallow: /my-orders
+Disallow: /auth
+
+# Sitemap
+Sitemap: https://candlesbydreamers.com/sitemap.xml

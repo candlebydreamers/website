@@ -1,10 +1,16 @@
 import Navbar from "@/components/Navbar";
 import FooterSection from "@/components/FooterSection";
+import SEO from "@/components/SEO";
 import { motion } from "framer-motion";
 
 const PrivacyPolicy = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO 
+        title="Privacy Policy"
+        description="Read our privacy policy to understand how Candles by Dreamers collects, uses, and protects your personal information when you shop for premium scented candles."
+        canonicalUrl="https://candlesbydreamers.com/privacy-policy"
+      />
       <Navbar />
       
       {/* Header */}

@@ -1,11 +1,17 @@
 import Navbar from "@/components/Navbar";
 import FooterSection from "@/components/FooterSection";
+import SEO from "@/components/SEO";
 import { motion } from "framer-motion";
 import { Truck, RotateCcw, AlertCircle, HelpCircle } from "lucide-react";
 
 const ShippingReturns = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO 
+        title="Shipping & Returns"
+        description="Learn about our shipping methods, delivery timelines, and hassle-free return policy for Candles by Dreamers premium scented candles across India."
+        canonicalUrl="https://candlesbydreamers.com/shipping-returns"
+      />
       <Navbar />
       
       {/* Hero Header */}

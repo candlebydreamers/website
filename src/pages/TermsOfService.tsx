@@ -1,10 +1,16 @@
 import Navbar from "@/components/Navbar";
 import FooterSection from "@/components/FooterSection";
+import SEO from "@/components/SEO";
 import { motion } from "framer-motion";
 
 const TermsOfService = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO 
+        title="Terms of Service"
+        description="Review the terms and conditions for using the Candles by Dreamers online store, including purchase policies, intellectual property rights, and user conduct."
+        canonicalUrl="https://candlesbydreamers.com/terms-of-service"
+      />
       <Navbar />
       
       {/* Header */}
@@ -165,7 +171,7 @@ const TermsOfService = () => {
                   6. Governing Law
                 </h2>
                 <p>
-                  These Terms of Service shall be governed by and construed in accordance with the laws of the State of California, United States, without regard to its conflict of law provisions.
+                  These Terms of Service shall be governed by and construed in accordance with the laws of India, specifically the jurisdiction of courts in Haryana, without regard to its conflict of law provisions.
                 </p>
                 <p className="border-l-4 border-orange-550 pl-4 py-2 bg-zinc-50 rounded-r-xl font-medium text-zinc-900">
                   For support inquiries regarding terms, contact: candlebydreamers@gmail.com

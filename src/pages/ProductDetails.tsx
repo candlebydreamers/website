@@ -178,11 +178,18 @@ const ProductDetails = () => {
         <div className="min-h-screen bg-background font-sans selection:bg-primary/30">
             <SEO 
                 title={`${product.name} | ${product.category}`}
-                description={`${product.description} Shop this high-fidelity ${product.category} at Candles by Dreamers - priced at ₹${product.discountPrice || product.price}.`}
+                description={`${product.description} Shop this premium ${product.category} candle at Candles by Dreamers - priced at ₹${product.discountPrice || product.price}.`}
                 keywords={`${product.name}, ${product.category}, candles, soy wax, aromatherapy, luxury candles`}
                 canonicalUrl={`https://candlesbydreamers.com/product/${product.id}`}
                 ogImage={product.imageUrls?.[0] || "https://candlesbydreamers.com/logo.png"}
                 ogType="product"
+                productData={{
+                    name: product.name,
+                    price: product.discountPrice || product.price,
+                    image: product.imageUrls?.[0],
+                    category: product.category,
+                    availability: "InStock"
+                }}
             />
             <Navbar />
 
