@@ -706,17 +706,18 @@ const AdminPanel = () => {
     };
 
     const handleDeleteUser = async (id: string) => {
-        if (!confirm("Permanently delete this customer account from the database?")) return;
+        if (!confirm("Permanently delete this customer account? This will remove them from authentication and they will no longer be able to log in.")) return;
         try {
-            const { error } = await supabase
-                .from("profiles")
-                .delete()
-                .eq("id", id);
+            const { data, error } = await supabase.functions.invoke("delete-user", {
+                body: { userId: id }
+            });
             if (error) throw error;
-            toast.success("Customer record deleted");
+            if (data?.error) throw new Error(data.error);
+            toast.success("Customer account permanently deleted");
             fetchCustomers();
-        } catch (error) {
-            toast.error("Failed to delete customer");
+        } catch (error: any) {
+            console.error("Delete user error:", error);
+            toast.error(error.message || "Failed to delete customer");
         }
     };
 
