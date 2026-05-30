@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 20 20% 98%; /* Warm off-white */
+    --foreground: 20 25% 12%; /* Elegant deep charcoal/brown */
+
+    --card: 0 0% 100%;
+    --card-foreground: 20 25% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 25% 12%;
+
+    --primary: 28 65% 45%; /* Warm Glowing Amber */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 25 15% 94%; /* Soft Cream */
+    --secondary-foreground: 20 25% 15%;
+
+    --muted: 25 15% 94%;
+    --muted-foreground: 20 15% 45%;
+
+    --accent: 28 65% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 20 15% 88%;
+    --input: 20 15% 88%;
+    --ring: 28 65% 45%;
+
+    --radius: 0.75rem; /* Slightly softer borders for cozy brand */
+
+    --gradient-accent: linear-gradient(135deg, hsl(28, 65%, 45%), hsl(38, 70%, 55%));
+    --gradient-accent-hover: linear-gradient(135deg, hsl(28, 65%, 50%), hsl(38, 70%, 60%));
+    --shadow-glow: 0 0 30px hsl(28 65% 45% / 0.15);
+    --shadow-card: 0 4px 24px hsl(20 10% 10% / 0.04);
+    --shadow-card-hover: 0 12px 40px hsl(20 10% 10% / 0.08);
+
+    --sidebar-background: 20 15% 97%;
+    --sidebar-foreground: 20 25% 15%;
+    --sidebar-primary: 28 65% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 20 15% 94%;
+    --sidebar-accent-foreground: 20 25% 15%;
+    --sidebar-border: 20 15% 88%;
+    --sidebar-ring: 28 65% 45%;
+  }
+
+  .dark {
+    --background: 20 25% 6%;
+    --foreground: 20 10% 95%;
+
+    --card: 20 20% 9%;
+    --card-foreground: 20 10% 95%;
+
+    --popover: 20 20% 9%;
+    --popover-foreground: 20 10% 95%;
+
+    --primary: 28 65% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 20 15% 12%;
+    --secondary-foreground: 20 10% 90%;
+
+    --muted: 20 15% 15%;
+    --muted-foreground: 20 10% 60%;
+
+    --accent: 28 65% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 20 15% 18%;
+    --input: 20 15% 18%;
+    --ring: 28 65% 45%;
+
+    --gradient-accent: linear-gradient(135deg, hsl(28, 65%, 45%), hsl(38, 70%, 55%));
+    --gradient-accent-hover: linear-gradient(135deg, hsl(28, 65%, 50%), hsl(38, 70%, 60%));
+    --shadow-glow: 0 0 30px hsl(28 65% 45% / 0.15);
+    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.4);
+    --shadow-card-hover: 0 8px 40px hsl(0 0% 0% / 0.6);
+
+    --sidebar-background: 20 25% 6%;
+    --sidebar-foreground: 20 10% 95%;
+    --sidebar-primary: 28 65% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 20 15% 12%;
+    --sidebar-accent-foreground: 20 10% 95%;
+    --sidebar-border: 20 15% 18%;
+    --sidebar-ring: 28 65% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-accent);
+  }
+
+  .gradient-btn {
+    background-image: var(--gradient-accent);
+    @apply text-white font-semibold tracking-wide transition-all duration-300;
+  }
+
+  .gradient-btn:hover {
+    background-image: var(--gradient-accent-hover);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+  }
+
+  .card-hover {
+    @apply transition-all duration-500 ease-out;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.3);
+    border-radius: 20px;
+  }
+}
