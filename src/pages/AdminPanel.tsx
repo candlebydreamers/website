@@ -47,6 +47,8 @@ interface Product {
     description: string;
     price: number;
     discountPrice?: number;
+    price250g?: number;
+    discountPrice250g?: number;
     category: string;
     imageUrls: string[];
     sizes: string[];
@@ -55,6 +57,12 @@ interface Product {
     createdAt: string;
     scentProfile?: string;
     burnTime?: string;
+    jarCategories?: string[];
+}
+
+interface JarCategory {
+    id: string;
+    name: string;
 }
 
 interface ContactMessage {
@@ -113,6 +121,9 @@ const AdminPanel = () => {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [newCategoryName, setNewCategoryName] = useState("");
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [jarCategories, setJarCategories] = useState<JarCategory[]>([]);
+    const [newJarCategoryName, setNewJarCategoryName] = useState("");
+    const [editingJarCategory, setEditingJarCategory] = useState<JarCategory | null>(null);
     const [availableSizes, setAvailableSizes] = useState<Size[]>([]);
     const [newSizeName, setNewSizeName] = useState("");
     const [editingSize, setEditingSize] = useState<Size | null>(null);
@@ -136,10 +147,13 @@ const AdminPanel = () => {
     const [productDescription, setProductDescription] = useState("");
     const [productPrice, setProductPrice] = useState("");
     const [productDiscountPrice, setProductDiscountPrice] = useState("");
+    const [productPrice250g, setProductPrice250g] = useState("");
+    const [productDiscountPrice250g, setProductDiscountPrice250g] = useState("");
     const [productCategory, setProductCategory] = useState("");
     const [productStock, setProductStock] = useState("");
     const [productScentProfile, setProductScentProfile] = useState("");
     const [productBurnTime, setProductBurnTime] = useState("");
+    const [productJarCategories, setProductJarCategories] = useState<string[]>([]);
     const [productSizes, setProductSizes] = useState<string[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [urlInput, setUrlInput] = useState("");
@@ -163,6 +177,7 @@ const AdminPanel = () => {
         setIsLoading(true);
         await Promise.all([
             fetchCategories(),
+            fetchJarCategories(),
             fetchSizes(),
             fetchProducts(),
             fetchMessages(),
@@ -326,6 +341,63 @@ const AdminPanel = () => {
             toast.error("Failed to delete size");
         }
     };
+
+    const fetchJarCategories = async () => {
+        try {
+            const { data, error } = await supabase.from("jar_categories").select("*").order("name", { ascending: true });
+            if (error) throw error;
+            setJarCategories(data || []);
+        } catch (error) {
+            console.error("Error fetching jar categories:", error);
+        }
+    };
+
+    const handleAddJarCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newJarCategoryName.trim()) return;
+        setIsLoading(true);
+        try {
+            const { error } = await supabase.from("jar_categories").insert({ name: newJarCategoryName.trim() });
+            if (error) throw error;
+            toast.success("Jar category added");
+            setNewJarCategoryName("");
+            fetchJarCategories();
+        } catch (error) {
+            toast.error("Failed to add jar category");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleUpdateJarCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingJarCategory || !editingJarCategory.name.trim()) return;
+        setIsLoading(true);
+        try {
+            const { error } = await supabase.from("jar_categories").update({ name: editingJarCategory.name.trim() }).eq("id", editingJarCategory.id);
+            if (error) throw error;
+            toast.success("Jar category updated");
+            setEditingJarCategory(null);
+            fetchJarCategories();
+        } catch (error) {
+            toast.error("Failed to update jar category");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteJarCategory = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this jar category?")) return;
+        try {
+            const { error } = await supabase.from("jar_categories").delete().eq("id", id);
+            if (error) throw error;
+            toast.success("Jar category deleted");
+            fetchJarCategories();
+        } catch (error) {
+            toast.error("Failed to delete jar category");
+        }
+    };
+
     const fetchProducts = async () => {
         try {
             const { data, error } = await supabase
@@ -359,12 +431,25 @@ const AdminPanel = () => {
                         }
                     }
 
+                    let parsedJarCategories: string[] = [];
+                    if (Array.isArray(p.jar_categories)) {
+                        parsedJarCategories = p.jar_categories;
+                    } else if (typeof p.jar_categories === "string") {
+                        try {
+                            parsedJarCategories = JSON.parse(p.jar_categories);
+                        } catch {
+                            parsedJarCategories = [];
+                        }
+                    }
+
                     return {
                         id: p.id,
                         name: p.name,
                         description: p.description,
                         price: Number(p.price),
                         discountPrice: p.discount_price ? Number(p.discount_price) : undefined,
+                        price250g: p.price_250g ? Number(p.price_250g) : undefined,
+                        discountPrice250g: p.discount_price_250g ? Number(p.discount_price_250g) : undefined,
                         category: p.category,
                         imageUrls: urls,
                         sizes: parsedSizes,
@@ -372,7 +457,8 @@ const AdminPanel = () => {
                         isVisible: p.is_visible,
                         createdAt: p.created_at,
                         scentProfile: p.scent_profile,
-                        burnTime: p.burn_time
+                        burnTime: p.burn_time,
+                        jarCategories: parsedJarCategories
                     };
                 });
                 setProducts(parsed);
@@ -468,6 +554,12 @@ const AdminPanel = () => {
         );
     };
 
+    const toggleJarCategory = (cat: string) => {
+        setProductJarCategories(prev => 
+            prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+        );
+    };
+
     const handleAddImageUrl = () => {
         if (!urlInput.trim()) return;
         setImagePreviews(prev => [...prev, urlInput.trim()]);
@@ -529,12 +621,15 @@ const AdminPanel = () => {
                 description: productDescription,
                 price: Number(productPrice),
                 discount_price: productDiscountPrice ? Number(productDiscountPrice) : null,
+                price_250g: productPrice250g ? Number(productPrice250g) : null,
+                discount_price_250g: productDiscountPrice250g ? Number(productDiscountPrice250g) : null,
                 category: productCategory,
                 stock: Number(productStock),
                 sizes: productSizes,
                 image_urls: imagePreviews,
                 scent_profile: productScentProfile || null,
                 burn_time: productBurnTime || null,
+                jar_categories: productJarCategories,
                 is_visible: true
             };
 
@@ -573,10 +668,13 @@ const AdminPanel = () => {
         setProductDescription(product.description);
         setProductPrice(product.price.toString());
         setProductDiscountPrice(product.discountPrice?.toString() || "");
+        setProductPrice250g(product.price250g?.toString() || "");
+        setProductDiscountPrice250g(product.discountPrice250g?.toString() || "");
         setProductCategory(product.category);
         setProductStock(product.stock.toString());
         setProductScentProfile(product.scentProfile || "");
         setProductBurnTime(product.burnTime || "");
+        setProductJarCategories(product.jarCategories || []);
         setProductSizes(product.sizes || []);
         setImagePreviews(product.imageUrls || []);
         setActiveTab("add-products");
@@ -588,10 +686,13 @@ const AdminPanel = () => {
         setProductDescription("");
         setProductPrice("");
         setProductDiscountPrice("");
+        setProductPrice250g("");
+        setProductDiscountPrice250g("");
         setProductCategory("");
         setProductStock("");
         setProductScentProfile("");
         setProductBurnTime("");
+        setProductJarCategories([]);
         setProductSizes([]);
         setImagePreviews([]);
     };
@@ -792,6 +893,7 @@ const AdminPanel = () => {
                     {[
                         { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
                         { id: "categories", label: "Categories", Icon: Tag },
+                        { id: "jar-categories", label: "Jar Categories", Icon: Package },
                         { id: "sizes", label: "Sizes/Weights", Icon: Ruler },
                         { id: "add-products", label: "Add Candles", Icon: PlusCircle },
                         { id: "listed-products", label: "Listed Candles", Icon: Package },
@@ -1413,6 +1515,103 @@ const AdminPanel = () => {
                             </div>
                         </TabsContent>
 
+                        <TabsContent value="jar-categories" className="space-y-6 mt-0">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <Card className="shadow-sm border-zinc-200 h-fit">
+                                    <CardHeader>
+                                        <CardTitle>{editingJarCategory ? "Edit Jar Category" : "Add New Jar Category"}</CardTitle>
+                                        <CardDescription>
+                                            {editingJarCategory ? "Update this jar category name." : "Create a new jar container option."}
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <form onSubmit={editingJarCategory ? handleUpdateJarCategory : handleAddJarCategory} className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-400">Jar Type / Material</label>
+                                                <Input 
+                                                    value={editingJarCategory ? editingJarCategory.name : newJarCategoryName}
+                                                    onChange={(e) => editingJarCategory 
+                                                        ? setEditingJarCategory({...editingJarCategory, name: e.target.value}) 
+                                                        : setNewJarCategoryName(e.target.value)
+                                                    }
+                                                    placeholder="e.g. Glass Jar, Tin, Ceramic" 
+                                                    required 
+                                                    className="rounded-xl border border-zinc-200 bg-white"
+                                                />
+                                            </div>
+                                            <div className="flex gap-2 pt-2">
+                                                <Button type="submit" disabled={isLoading} className="flex-1 bg-primary text-white rounded-xl hover:bg-amber-600 shadow-md">
+                                                    {isLoading ? "Saving..." : (editingJarCategory ? "Update" : "Add Jar Type")}
+                                                </Button>
+                                                {editingJarCategory && (
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="outline" 
+                                                        onClick={() => setEditingJarCategory(null)}
+                                                        className="rounded-xl border-zinc-200 hover:bg-zinc-50"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </form>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="lg:col-span-2 shadow-sm border-zinc-200">
+                                    <CardHeader>
+                                        <CardTitle>Jar Types</CardTitle>
+                                        <CardDescription>Manage the jar categories available when listing candles.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="border border-zinc-200 rounded-2xl overflow-hidden bg-white">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-zinc-50 border-b border-zinc-200">
+                                                    <tr>
+                                                        <th className="p-4 text-left font-mono uppercase tracking-widest text-[10px] text-zinc-400">Jar Category Name</th>
+                                                        <th className="p-4 text-right font-mono uppercase tracking-widest text-[10px] text-zinc-400">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-zinc-150">
+                                                    {jarCategories.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={2} className="p-8 text-center text-zinc-400 italic">
+                                                                No jar categories found. Add your first jar type.
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        jarCategories.map((cat) => (
+                                                            <tr key={cat.id} className="hover:bg-zinc-50/50 transition-colors">
+                                                                <td className="p-4 font-bold text-zinc-800">{cat.name}</td>
+                                                                <td className="p-4 text-right space-x-2">
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="sm" 
+                                                                        className="h-8 w-8 p-0 text-zinc-400 hover:text-primary rounded-xl"
+                                                                        onClick={() => setEditingJarCategory(cat)}
+                                                                    >
+                                                                        <Edit size={14} />
+                                                                    </Button>
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="sm" 
+                                                                        className="h-8 w-8 p-0 text-zinc-400 hover:text-red-500 rounded-xl"
+                                                                        onClick={() => handleDeleteJarCategory(cat.id)}
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </Button>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </TabsContent>
+
                         <TabsContent value="add-products" className="mt-0">
                             <Card className="shadow-sm border-zinc-200 max-w-4xl">
                                 <CardHeader>
@@ -1436,44 +1635,91 @@ const AdminPanel = () => {
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="space-y-2">
-                                                        <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-400">Base Price (₹)</label>
+                                                        <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-400">100g Base Price (₹)</label>
                                                         <Input 
                                                             type="number" 
                                                             min="0"
                                                             step="0.01" 
                                                             value={productPrice}
                                                             onChange={(e) => setProductPrice(e.target.value)}
-                                                            placeholder="29.99" 
+                                                            placeholder="e.g. 500" 
                                                             required 
                                                             className="rounded-xl border border-zinc-200 bg-white"
                                                         />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-400">Discount Price (₹)</label>
+                                                        <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-400">100g Discount Price (₹)</label>
                                                         <Input 
                                                             type="number" 
                                                             min="0"
                                                             step="0.01" 
                                                             value={productDiscountPrice}
                                                             onChange={(e) => setProductDiscountPrice(e.target.value)}
-                                                            placeholder="24.99" 
+                                                            placeholder="e.g. 400" 
                                                             className="rounded-xl border border-zinc-200 bg-white"
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-400">Category Fragrance</label>
-                                                    <select 
-                                                        value={productCategory}
-                                                        onChange={(e) => setProductCategory(e.target.value)}
-                                                        required
-                                                        className="flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all text-zinc-800 font-semibold"
-                                                    >
-                                                        <option value="">Select Category</option>
-                                                        {Array.isArray(categories) && categories.map(cat => (
-                                                            <option key={cat.id} value={cat.name}>{cat.name}</option>
-                                                        ))}
-                                                    </select>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-400">250g Base Price (₹)</label>
+                                                        <Input 
+                                                            type="number" 
+                                                            min="0"
+                                                            step="0.01" 
+                                                            value={productPrice250g}
+                                                            onChange={(e) => setProductPrice250g(e.target.value)}
+                                                            placeholder="e.g. 900" 
+                                                            className="rounded-xl border border-zinc-200 bg-white"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-400">250g Discount Price (₹)</label>
+                                                        <Input 
+                                                            type="number" 
+                                                            min="0"
+                                                            step="0.01" 
+                                                            value={productDiscountPrice250g}
+                                                            onChange={(e) => setProductDiscountPrice250g(e.target.value)}
+                                                            placeholder="e.g. 750" 
+                                                            className="rounded-xl border border-zinc-200 bg-white"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-400">Category Fragrance</label>
+                                                        <select 
+                                                            value={productCategory}
+                                                            onChange={(e) => setProductCategory(e.target.value)}
+                                                            required
+                                                            className="flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-primary transition-all text-zinc-800 font-semibold"
+                                                        >
+                                                            <option value="">Select Fragrance</option>
+                                                            {Array.isArray(categories) && categories.map(cat => (
+                                                                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-400 block">Available Jar Categories</label>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {Array.isArray(jarCategories) && jarCategories.map(cat => (
+                                                                <button
+                                                                    key={cat.id}
+                                                                    type="button"
+                                                                    onClick={() => toggleJarCategory(cat.name)}
+                                                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono border transition-all ${
+                                                                        productJarCategories.includes(cat.name)
+                                                                            ? "bg-primary text-white border-primary shadow-sm scale-105"
+                                                                            : "bg-white text-zinc-500 border-zinc-200 hover:border-primary/50"
+                                                                    }`}
+                                                                >
+                                                                    {cat.name}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="space-y-2">

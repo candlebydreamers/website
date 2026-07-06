@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
     const productIds = [...new Set(cartItems.map((item: any) => item.productId))];
     const { data: products, error: productError } = await supabaseAdmin
       .from("products")
-      .select("id, name, price, discount_price, is_visible")
+      .select("id, name, price, discount_price, price_250g, discount_price_250g, is_visible")
       .in("id", productIds);
 
     if (productError || !products) {
@@ -105,7 +105,13 @@ Deno.serve(async (req: Request) => {
       }
 
       const quantity = Math.max(1, Math.floor(Number(item.quantity)));
-      const unitPrice = product.discount_price ? Number(product.discount_price) : Number(product.price);
+      const is250g = (item.size || "").includes("250g");
+      let unitPrice = 0;
+      if (is250g && product.price_250g != null) {
+          unitPrice = product.discount_price_250g ? Number(product.discount_price_250g) : Number(product.price_250g);
+      } else {
+          unitPrice = product.discount_price ? Number(product.discount_price) : Number(product.price);
+      }
       const lineTotal = unitPrice * quantity;
       subtotal += lineTotal;
 

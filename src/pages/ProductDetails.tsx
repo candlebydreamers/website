@@ -21,6 +21,9 @@ interface Product {
     sizes: string[];
     scentProfile?: string;
     burnTime?: string;
+    jarCategories?: string[];
+    price250g?: number;
+    discountPrice250g?: number;
 }
 
 const ProductDetails = () => {
@@ -31,7 +34,8 @@ const ProductDetails = () => {
     const [product, setProduct] = useState<Product | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [activeImage, setActiveImage] = useState<string | null>(null);
-    const [selectedSize, setSelectedSize] = useState<string>("");
+    const [selectedSize, setSelectedSize] = useState<string | null>(null);
+    const [selectedJarCategory, setSelectedJarCategory] = useState<string | null>(null);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
     useEffect(() => {
@@ -68,18 +72,32 @@ const ProductDetails = () => {
                         }
                     }
 
+                    let parsedJarCategories: string[] = [];
+                    if (Array.isArray(data.jar_categories)) {
+                        parsedJarCategories = data.jar_categories;
+                    } else if (typeof data.jar_categories === "string") {
+                        try {
+                            parsedJarCategories = JSON.parse(data.jar_categories);
+                        } catch {
+                            parsedJarCategories = [];
+                        }
+                    }
+
                     const parsedProduct: Product = {
                         id: data.id,
                         name: data.name,
                         description: data.description,
                         price: Number(data.price),
                         discountPrice: data.discount_price ? Number(data.discount_price) : undefined,
+                        price250g: data.price_250g ? Number(data.price_250g) : undefined,
+                        discountPrice250g: data.discount_price_250g ? Number(data.discount_price_250g) : undefined,
                         category: data.category,
                         imageUrls: urls,
                         isVisible: data.is_visible,
                         sizes: parsedSizes,
                         scentProfile: data.scent_profile,
-                        burnTime: data.burn_time
+                        burnTime: data.burn_time,
+                        jarCategories: parsedJarCategories
                     };
 
                     setProduct(parsedProduct);
@@ -92,6 +110,11 @@ const ProductDetails = () => {
                     // Preselect a size if available
                     if (parsedSizes.length > 0) {
                         setSelectedSize(parsedSizes[0]);
+                    }
+
+                    // Preselect a jar category if available
+                    if (parsedJarCategories.length > 0) {
+                        setSelectedJarCategory(parsedJarCategories[0]);
                     }
                 } else {
                     toast.error("Product not found");
@@ -121,9 +144,15 @@ const ProductDetails = () => {
             toast.error("Please select a size first");
             return;
         }
+
+        if (!selectedJarCategory && product?.jarCategories && product.jarCategories.length > 0) {
+            toast.error("Please select a jar type first");
+            return;
+        }
         
         if (product) {
-            await addToCart(product.id, selectedSize || "One Size");
+            const finalSize = selectedJarCategory ? `${selectedSize || "One Size"} - ${selectedJarCategory}` : selectedSize || "One Size";
+            await addToCart(product.id, finalSize);
         }
     };
 
@@ -139,9 +168,15 @@ const ProductDetails = () => {
             toast.error("Please select a size first");
             return;
         }
+
+        if (!selectedJarCategory && product?.jarCategories && product.jarCategories.length > 0) {
+            toast.error("Please select a jar type first");
+            return;
+        }
         
         if (product) {
-            await addToCart(product.id, selectedSize || "One Size");
+            const finalSize = selectedJarCategory ? `${selectedSize || "One Size"} - ${selectedJarCategory}` : selectedSize || "One Size";
+            await addToCart(product.id, finalSize);
             navigate("/checkout");
         }
     };
@@ -174,18 +209,22 @@ const ProductDetails = () => {
 
     const availableImages = product.imageUrls || [];
 
+    const is250g = (selectedSize || "").includes("250g");
+    const displayPrice = (is250g && product.price250g != null) ? product.price250g : product.price;
+    const displayDiscountPrice = (is250g && product.price250g != null) ? product.discountPrice250g : product.discountPrice;
+
     return (
         <div className="min-h-screen bg-background font-sans selection:bg-primary/30">
             <SEO 
                 title={`${product.name} | ${product.category}`}
-                description={`${product.description} Shop this premium ${product.category} candle at Candles by Dreamers - priced at ₹${product.discountPrice || product.price}.`}
+                description={`${product.description} Shop this premium ${product.category} candle at Candles by Dreamers - priced at ₹${displayDiscountPrice || displayPrice}.`}
                 keywords={`${product.name}, ${product.category}, candles, soy wax, aromatherapy, luxury candles`}
                 canonicalUrl={`https://candlesbydreamers.com/product/${product.id}`}
                 ogImage={product.imageUrls?.[0] || "https://candlesbydreamers.com/logo.png"}
                 ogType="product"
                 productData={{
                     name: product.name,
-                    price: product.discountPrice || product.price,
+                    price: displayDiscountPrice || displayPrice,
                     image: product.imageUrls?.[0],
                     category: product.category,
                     availability: "InStock"
@@ -231,7 +270,7 @@ const ProductDetails = () => {
                             className="flex-1 min-w-0 order-1 md:order-2 aspect-square bg-black rounded-2xl border border-zinc-100 overflow-hidden relative shadow-sm group cursor-zoom-in"
                             onClick={() => activeImage && setIsLightboxOpen(true)}
                         >
-                            {product.discountPrice && (
+                            {displayDiscountPrice && (
                                 <div className="absolute top-4 left-4 z-10 bg-primary text-white text-[10px] font-black uppercase tracking-[0.25em] px-3.5 py-2 rounded-full shadow-sm animate-pulse">
                                     Sale
                                 </div>
@@ -271,11 +310,11 @@ const ProductDetails = () => {
                             
                             <div className="flex items-end gap-3 mb-6">
                                 <span className="text-2xl sm:text-3xl font-semibold text-zinc-950">
-                                    ₹{product.discountPrice || product.price}
+                                    ₹{displayDiscountPrice || displayPrice}
                                 </span>
-                                {product.discountPrice && (
+                                {displayDiscountPrice && (
                                     <span className="text-sm sm:text-lg text-zinc-400 line-through font-normal mb-1">
-                                        ₹{product.price}
+                                        ₹{displayPrice}
                                     </span>
                                 )}
                             </div>
@@ -304,10 +343,30 @@ const ProductDetails = () => {
 
                             <div className="w-full h-px bg-zinc-150 my-5"></div>
                             
-                            <div className="text-zinc-650 text-sm leading-relaxed max-w-none font-semibold">
-                                <p>{product.description}</p>
+                            <div className="text-zinc-650 text-sm leading-relaxed max-w-none font-semibold whitespace-pre-wrap break-words">
+                                {product.description}
                             </div>
                         </div>
+
+                        {/* Jar Category Selection (Core Detail) */}
+                        {product.jarCategories && product.jarCategories.length > 0 && (
+                            <div className="mb-6">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-zinc-800">Select Jar Category</h3>
+                                </div>
+                                <div className="flex flex-wrap gap-2.5">
+                                    {product.jarCategories.map((cat) => (
+                                        <button 
+                                            key={cat}
+                                            onClick={() => setSelectedJarCategory(cat)}
+                                            className={`h-11 min-w-[3.5rem] px-5 rounded-xl border-2 font-black uppercase tracking-wider text-xs transition-all duration-200 ${selectedJarCategory === cat ? "bg-primary border-primary text-white shadow-md shadow-primary/10 scale-105" : "border-zinc-200 hover:border-zinc-800 text-zinc-700 hover:text-black"}`}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Weight/Size Selection */}
                         <div className="mb-6">

@@ -225,3 +225,43 @@ SELECT
     coalesce(created_at, now())
 FROM auth.users
 ON CONFLICT (id) DO NOTHING;
+
+-- 13. Create Jar Categories Table (Safe if already exists)
+CREATE TABLE IF NOT EXISTS public.jar_categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.jar_categories ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read-only jar_categories" ON public.jar_categories;
+CREATE POLICY "Allow public read-only jar_categories" ON public.jar_categories 
+    FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public inserts on jar_categories" ON public.jar_categories;
+CREATE POLICY "Allow public inserts on jar_categories" ON public.jar_categories
+    FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public updates on jar_categories" ON public.jar_categories;
+CREATE POLICY "Allow public updates on jar_categories" ON public.jar_categories
+    FOR UPDATE USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public deletes on jar_categories" ON public.jar_categories;
+CREATE POLICY "Allow public deletes on jar_categories" ON public.jar_categories
+    FOR DELETE USING (true);
+
+-- Add jar_categories to products table (JSON array for multiple jar types)
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS jar_categories JSONB DEFAULT '[]'::jsonb NOT NULL;
+
+-- Insert default jar categories
+INSERT INTO public.jar_categories (name) VALUES
+('Glass Jar'),
+('Tin Jar'),
+('Ceramic Jar'),
+('Concrete Jar')
+ON CONFLICT (name) DO NOTHING;
+
+-- Add 250g pricing fields to products table
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_250g NUMERIC(10, 2);
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS discount_price_250g NUMERIC(10, 2);

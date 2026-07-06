@@ -7,6 +7,8 @@ interface Product {
   name: string;
   price: number;
   discountPrice?: number;
+  price250g?: number;
+  discountPrice250g?: number;
   imageUrls: string[];
 }
 
@@ -76,7 +78,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!productObj) {
         const { data, error } = await supabase
           .from('products')
-          .select('id, name, price, discount_price, image_urls')
+          .select('id, name, price, discount_price, price_250g, discount_price_250g, image_urls')
           .eq('id', productId)
           .single();
 
@@ -102,9 +104,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: data.name,
           price: Number(data.price),
           discountPrice: data.discount_price ? Number(data.discount_price) : undefined,
+          price250g: data.price_250g ? Number(data.price_250g) : undefined,
+          discountPrice250g: data.discount_price_250g ? Number(data.discount_price_250g) : undefined,
           imageUrls: urls,
         };
       }
+
+      // Resolve final price based on size
+      let resolvedPrice = productObj.price;
+      let resolvedDiscountPrice = productObj.discountPrice;
+      const is250g = size.includes("250g");
+      if (is250g && productObj.price250g != null) {
+          resolvedPrice = productObj.price250g;
+          resolvedDiscountPrice = productObj.discountPrice250g;
+      }
+      
+      const finalProductObj = { ...productObj, price: resolvedPrice, discountPrice: resolvedDiscountPrice };
 
       const existingIndex = cartItems.findIndex(
         (item) => item.productId === productId && item.size === size
@@ -120,7 +135,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           productId,
           size,
           quantity,
-          product: productObj,
+          product: finalProductObj,
         };
         updatedCart = [...cartItems, newItem];
       }
