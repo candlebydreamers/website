@@ -265,3 +265,29 @@ ON CONFLICT (name) DO NOTHING;
 -- Add 250g pricing fields to products table
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_250g NUMERIC(10, 2);
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS discount_price_250g NUMERIC(10, 2);
+
+-- 9. Create Product Reviews Table
+CREATE TABLE IF NOT EXISTS public.reviews (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID REFERENCES public.products(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    customer_name TEXT NOT NULL,
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5) NOT NULL,
+    comment TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on reviews
+ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+
+-- Allow public read access to reviews
+CREATE POLICY "Allow public read access to reviews" ON public.reviews
+    FOR SELECT USING (true);
+
+-- Allow authenticated users to insert their own reviews
+CREATE POLICY "Allow authenticated users to insert reviews" ON public.reviews
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Allow public deletes on reviews (for Admin Panel functionality)
+CREATE POLICY "Allow public delete on reviews" ON public.reviews
+    FOR DELETE USING (true);

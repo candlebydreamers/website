@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ShoppingBag, ChevronRight, Package, ArrowLeft, Flame, Clock, Sparkles, Heart, X } from "lucide-react";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/FooterSection";
+import ProductReviews from "../components/ProductReviews";
 import SEO from "../components/SEO";
 import { toast } from "sonner";
 import { useCart } from "../context/CartContext";
@@ -464,6 +465,7 @@ const ProductDetails = () => {
                 </div>
             )}
 
+            <ProductReviews productId={product.id} />
             <FooterSection />
         </div>
     );

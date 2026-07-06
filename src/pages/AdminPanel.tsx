@@ -25,7 +25,8 @@ import {
     FileText,
     MessageSquare,
     CheckCircle2,
-    Ruler
+    Ruler,
+    Star
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
@@ -105,6 +106,16 @@ interface Order {
     items: OrderItem[];
 }
 
+interface AdminReview {
+    id: string;
+    product_id: string;
+    customer_name: string;
+    rating: number;
+    comment: string;
+    created_at: string;
+    products?: { name: string };
+}
+
 interface DashboardStats {
     totalEarnings: number;
     totalProducts: number;
@@ -130,6 +141,7 @@ const AdminPanel = () => {
     const [messages, setMessages] = useState<ContactMessage[]>([]);
     const [customers, setCustomers] = useState<CustomerUser[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
+    const [reviews, setReviews] = useState<AdminReview[]>([]);
     const [viewingMessage, setViewingMessage] = useState<ContactMessage | null>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [stats, setStats] = useState<DashboardStats>({
@@ -182,7 +194,8 @@ const AdminPanel = () => {
             fetchProducts(),
             fetchMessages(),
             fetchOrders(),
-            fetchCustomers()
+            fetchCustomers(),
+            fetchReviews()
         ]);
         setIsLoading(false);
     };
@@ -548,6 +561,32 @@ const AdminPanel = () => {
         }
     };
 
+    const fetchReviews = async () => {
+        try {
+            const { data, error } = await supabase
+                .from("reviews")
+                .select("*, products(name)")
+                .order("created_at", { ascending: false });
+            if (error) throw error;
+            setReviews(data || []);
+        } catch (error) {
+            console.error("Error fetching reviews:", error);
+        }
+    };
+
+    const handleDeleteReview = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this review?")) return;
+        try {
+            const { error } = await supabase.from("reviews").delete().eq("id", id);
+            if (error) throw error;
+            toast.success("Review deleted successfully");
+            fetchReviews();
+        } catch (error) {
+            console.error("Error deleting review:", error);
+            toast.error("Failed to delete review");
+        }
+    };
+
     const toggleSize = (size: string) => {
         setProductSizes(prev => 
             prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
@@ -898,6 +937,7 @@ const AdminPanel = () => {
                         { id: "add-products", label: "Add Candles", Icon: PlusCircle },
                         { id: "listed-products", label: "Listed Candles", Icon: Package },
                         { id: "messages", label: "Inquiries", Icon: MessageSquare, section: "Management" },
+                        { id: "reviews", label: "Reviews", Icon: Star },
                         { id: "customers", label: "Customers", Icon: Users },
                         { id: "orders", label: "Orders", Icon: Package, section: "Storefront" }
                     ].map((item) => (
@@ -1250,6 +1290,66 @@ const AdminPanel = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="reviews" className="space-y-6 mt-0">
+                            <Card className="shadow-sm border-zinc-200">
+                                <CardHeader>
+                                    <CardTitle>Customer Reviews</CardTitle>
+                                    <CardDescription>Manage product reviews from your customers.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {reviews.length === 0 ? (
+                                        <div className="text-center py-16 bg-zinc-50 rounded-2xl border border-zinc-100 border-dashed">
+                                            <Star className="mx-auto text-zinc-300 mb-3" size={32} />
+                                            <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-600 mb-2">No Reviews Found</h4>
+                                            <p className="text-[10px] text-zinc-400 uppercase tracking-wider">
+                                                When customers leave reviews, they will appear here.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {reviews.map((review) => (
+                                                <div key={review.id} className="bg-white border border-zinc-200 rounded-2xl p-5 hover:shadow-md transition-shadow flex flex-col justify-between">
+                                                    <div>
+                                                        <div className="flex items-start justify-between mb-3">
+                                                            <div>
+                                                                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 line-clamp-1">{review.products?.name || "Unknown Product"}</h4>
+                                                                <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mt-1">By {review.customer_name}</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-0.5 shrink-0">
+                                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                                    <Star 
+                                                                        key={star} 
+                                                                        size={12} 
+                                                                        className={star <= review.rating ? "fill-amber-400 text-amber-400" : "fill-zinc-100 text-zinc-200"} 
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-xs text-zinc-600 mb-4 line-clamp-4 leading-relaxed">
+                                                            "{review.comment}"
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center justify-between pt-3 border-t border-zinc-100 mt-auto">
+                                                        <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-400">
+                                                            {new Date(review.created_at).toLocaleDateString()}
+                                                        </span>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="sm" 
+                                                            onClick={() => handleDeleteReview(review.id)}
+                                                            className="h-7 px-2 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                                        >
+                                                            <Trash2 size={12} className="mr-1" /> Delete
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         </TabsContent>
