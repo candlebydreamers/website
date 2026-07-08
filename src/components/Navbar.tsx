@@ -102,7 +102,6 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    clearCart();
     setUser(null);
     setUserOpen(false);
     navigate("/auth");
