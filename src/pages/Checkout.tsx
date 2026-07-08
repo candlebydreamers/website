@@ -24,7 +24,7 @@ const Checkout = () => {
     const [processingStep, setProcessingStep] = useState<"idle" | "creating" | "paying" | "verifying">("idle");
 
     // Tax & Shipping Configuration state (for display only — actual calculation happens server-side)
-    const [taxRate, setTaxRate] = useState(0.18);
+    const [taxRate, setTaxRate] = useState(0.05);
     const [shippingCharge, setShippingCharge] = useState(100.0);
     const [freeShippingThreshold, setFreeShippingThreshold] = useState(1200.0);
 

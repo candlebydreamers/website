@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS public.settings (
 
 -- 8. Seed Default Settings (Safe upsert)
 INSERT INTO public.settings (key, value) VALUES
-('tax_rate', '0.18') -- 18% standard GST / sales tax for India / international
+('tax_rate', '0.05') -- 5% GST on candles in India
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 INSERT INTO public.settings (key, value) VALUES
@@ -175,6 +175,11 @@ CREATE POLICY "Allow public delete on contacts" ON public.contacts
 DROP POLICY IF EXISTS "Allow public read-only settings" ON public.settings;
 CREATE POLICY "Allow public read-only settings" ON public.settings
     FOR SELECT USING (true);
+
+-- Settings: Allow update for admin panel edits
+DROP POLICY IF EXISTS "Allow public update on settings" ON public.settings;
+CREATE POLICY "Allow public update on settings" ON public.settings
+    FOR UPDATE USING (true) WITH CHECK (true);
 
 -- 12. Profiles Table (Automatic signup synchronization)
 CREATE TABLE IF NOT EXISTS public.profiles (

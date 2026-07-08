@@ -26,7 +26,12 @@ import {
     MessageSquare,
     CheckCircle2,
     Ruler,
-    Star
+    Star,
+    Settings,
+    Truck,
+    IndianRupee,
+    Save,
+    Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
@@ -154,6 +159,13 @@ const AdminPanel = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [hasFetchedProfiles, setHasFetchedProfiles] = useState(false);
 
+    // Settings State
+    const [settingsShippingCharge, setSettingsShippingCharge] = useState("");
+    const [settingsFreeShippingThreshold, setSettingsFreeShippingThreshold] = useState("");
+    const [settingsTaxRate, setSettingsTaxRate] = useState("");
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
+    const [settingsLoaded, setSettingsLoaded] = useState(false);
+
     // Product Form State
     const [productName, setProductName] = useState("");
     const [productDescription, setProductDescription] = useState("");
@@ -195,7 +207,8 @@ const AdminPanel = () => {
             fetchMessages(),
             fetchOrders(),
             fetchCustomers(),
-            fetchReviews()
+            fetchReviews(),
+            fetchSettings()
         ]);
         setIsLoading(false);
     };
@@ -892,6 +905,79 @@ const AdminPanel = () => {
         }
     };
 
+    const fetchSettings = async () => {
+        try {
+            const { data, error } = await supabase
+                .from("settings")
+                .select("*");
+            
+            if (error) throw error;
+            
+            if (data) {
+                const settingsMap = data.reduce((acc: any, curr: any) => {
+                    acc[curr.key] = curr.value;
+                    return acc;
+                }, {});
+                
+                setSettingsShippingCharge(settingsMap.shipping_charge || "100");
+                setSettingsFreeShippingThreshold(settingsMap.free_shipping_threshold || "1200");
+                setSettingsTaxRate(settingsMap.tax_rate || "0.05");
+                setSettingsLoaded(true);
+            }
+        } catch (error) {
+            console.error("Error fetching settings:", error);
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        setIsSavingSettings(true);
+        try {
+            // Validate inputs
+            const charge = parseFloat(settingsShippingCharge);
+            const threshold = parseFloat(settingsFreeShippingThreshold);
+            const taxRateVal = parseFloat(settingsTaxRate);
+
+            if (isNaN(charge) || charge < 0) {
+                toast.error("Please enter a valid delivery charge amount");
+                setIsSavingSettings(false);
+                return;
+            }
+            if (isNaN(threshold) || threshold < 0) {
+                toast.error("Please enter a valid free delivery threshold");
+                setIsSavingSettings(false);
+                return;
+            }
+            if (isNaN(taxRateVal) || taxRateVal < 0 || taxRateVal > 1) {
+                toast.error("Tax rate must be between 0 and 1 (e.g. 0.05 for 5%)");
+                setIsSavingSettings(false);
+                return;
+            }
+
+            // Upsert each setting
+            const updates = [
+                { key: "shipping_charge", value: charge.toFixed(2) },
+                { key: "free_shipping_threshold", value: threshold.toFixed(2) },
+                { key: "tax_rate", value: taxRateVal.toString() }
+            ];
+
+            for (const setting of updates) {
+                const { error } = await supabase
+                    .from("settings")
+                    .update({ value: setting.value })
+                    .eq("key", setting.key);
+                
+                if (error) throw error;
+            }
+
+            toast.success("Store settings saved successfully!");
+        } catch (error: any) {
+            console.error("Error saving settings:", error);
+            toast.error(error.message || "Failed to save settings");
+        } finally {
+            setIsSavingSettings(false);
+        }
+    };
+
     const handleLogout = () => {
         localStorage.removeItem("isAdminAuthenticated");
         toast.info("Logged out from admin session");
@@ -939,7 +1025,8 @@ const AdminPanel = () => {
                         { id: "messages", label: "Inquiries", Icon: MessageSquare, section: "Management" },
                         { id: "reviews", label: "Reviews", Icon: Star },
                         { id: "customers", label: "Customers", Icon: Users },
-                        { id: "orders", label: "Orders", Icon: Package, section: "Storefront" }
+                        { id: "orders", label: "Orders", Icon: Package, section: "Storefront" },
+                        { id: "settings", label: "Settings", Icon: Settings, section: "Configuration" }
                     ].map((item) => (
                         <div key={item.id}>
                             {item.section && (
@@ -2072,6 +2159,158 @@ const AdminPanel = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* ===== SETTINGS TAB ===== */}
+                        <TabsContent value="settings" className="space-y-6 mt-0">
+                            <Card className="shadow-sm border-zinc-200">
+                                <CardHeader>
+                                    <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                                        <Truck className="w-5 h-5 text-primary" /> Delivery & Pricing Settings
+                                    </CardTitle>
+                                    <CardDescription className="text-xs font-semibold text-zinc-400 tracking-wide">
+                                        Configure delivery charges, free delivery threshold, and tax rate. These values are applied in real-time to the checkout page.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-8">
+                                    {!settingsLoaded ? (
+                                        <div className="flex items-center justify-center py-12 text-zinc-400">
+                                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                            <span className="text-xs font-bold uppercase tracking-widest">Loading settings...</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Free Delivery Threshold */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center border border-emerald-100">
+                                                        <IndianRupee className="w-4 h-4 text-emerald-600" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800">Free Delivery Threshold</h3>
+                                                        <p className="text-[10px] text-zinc-400 font-semibold">Orders above this amount get free delivery</p>
+                                                    </div>
+                                                </div>
+                                                <div className="relative max-w-sm">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-400">₹</span>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        step="1"
+                                                        value={settingsFreeShippingThreshold}
+                                                        onChange={(e) => setSettingsFreeShippingThreshold(e.target.value)}
+                                                        placeholder="1200"
+                                                        className="pl-8 h-12 text-sm font-bold border-zinc-200 focus:border-primary rounded-xl"
+                                                    />
+                                                </div>
+                                                <p className="text-[10px] font-bold text-zinc-400 tracking-wide">
+                                                    Currently: Orders ≥ ₹{parseFloat(settingsFreeShippingThreshold || "0").toLocaleString("en-IN")} qualify for free delivery
+                                                </p>
+                                            </div>
+
+                                            <div className="border-t border-zinc-100" />
+
+                                            {/* Delivery Charge */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center border border-amber-100">
+                                                        <Truck className="w-4 h-4 text-primary" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800">Delivery Charge</h3>
+                                                        <p className="text-[10px] text-zinc-400 font-semibold">Flat fee charged on orders below the free delivery threshold</p>
+                                                    </div>
+                                                </div>
+                                                <div className="relative max-w-sm">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-400">₹</span>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        step="1"
+                                                        value={settingsShippingCharge}
+                                                        onChange={(e) => setSettingsShippingCharge(e.target.value)}
+                                                        placeholder="100"
+                                                        className="pl-8 h-12 text-sm font-bold border-zinc-200 focus:border-primary rounded-xl"
+                                                    />
+                                                </div>
+                                                <p className="text-[10px] font-bold text-zinc-400 tracking-wide">
+                                                    Currently: ₹{parseFloat(settingsShippingCharge || "0").toLocaleString("en-IN")} delivery fee on orders below ₹{parseFloat(settingsFreeShippingThreshold || "0").toLocaleString("en-IN")}
+                                                </p>
+                                            </div>
+
+                                            <div className="border-t border-zinc-100" />
+
+                                            {/* Tax Rate */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-100">
+                                                        <FileText className="w-4 h-4 text-blue-600" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800">GST / Tax Rate</h3>
+                                                        <p className="text-[10px] text-zinc-400 font-semibold">Tax percentage applied to all orders (enter as decimal, e.g. 0.05 = 5%)</p>
+                                                    </div>
+                                                </div>
+                                                <div className="relative max-w-sm">
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        max="1"
+                                                        step="0.01"
+                                                        value={settingsTaxRate}
+                                                        onChange={(e) => setSettingsTaxRate(e.target.value)}
+                                                        placeholder="0.05"
+                                                        className="h-12 text-sm font-bold border-zinc-200 focus:border-primary rounded-xl"
+                                                    />
+                                                </div>
+                                                <p className="text-[10px] font-bold text-zinc-400 tracking-wide">
+                                                    Currently: {(parseFloat(settingsTaxRate || "0") * 100).toFixed(1)}% GST applied on all orders
+                                                </p>
+                                            </div>
+
+                                            <div className="border-t border-zinc-100" />
+
+                                            {/* Summary Preview */}
+                                            <div className="bg-zinc-50 rounded-xl border border-zinc-200 p-5 space-y-3">
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Preview — How This Looks at Checkout</h4>
+                                                <div className="space-y-2 text-xs font-semibold text-zinc-600">
+                                                    <div className="flex justify-between">
+                                                        <span>Subtotal (example)</span>
+                                                        <span>₹1,000.00</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>GST ({(parseFloat(settingsTaxRate || "0") * 100).toFixed(0)}%)</span>
+                                                        <span>₹{(1000 * parseFloat(settingsTaxRate || "0")).toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>Delivery</span>
+                                                        <span>{1000 >= parseFloat(settingsFreeShippingThreshold || "0") ? <span className="text-emerald-600 font-black">FREE</span> : `₹${parseFloat(settingsShippingCharge || "0").toFixed(2)}`}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm font-black text-zinc-900 pt-2 border-t border-zinc-200">
+                                                        <span>Total</span>
+                                                        <span className="text-primary">
+                                                            ₹{(1000 + (1000 * parseFloat(settingsTaxRate || "0")) + (1000 >= parseFloat(settingsFreeShippingThreshold || "0") ? 0 : parseFloat(settingsShippingCharge || "0"))).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Save Button */}
+                                            <Button
+                                                onClick={handleSaveSettings}
+                                                disabled={isSavingSettings}
+                                                className="bg-primary hover:bg-amber-600 text-white font-black uppercase tracking-widest text-[11px] px-8 py-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                                            >
+                                                {isSavingSettings ? (
+                                                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving...</>
+                                                ) : (
+                                                    <><Save className="w-4 h-4 mr-2" /> Save Settings</>
+                                                )}
+                                            </Button>
+                                        </>
+                                    )}
                                 </CardContent>
                             </Card>
                         </TabsContent>

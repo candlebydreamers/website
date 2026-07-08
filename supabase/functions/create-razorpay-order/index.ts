@@ -133,7 +133,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const taxRate = Number(settingsMap.tax_rate || "0.18");
+    const taxRate = Number(settingsMap.tax_rate || "0.05");
     const shippingCharge = Number(settingsMap.shipping_charge || "100");
     const freeShippingThreshold = Number(settingsMap.free_shipping_threshold || "1200");
 
