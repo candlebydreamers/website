@@ -116,7 +116,7 @@ const FooterSection = () => {
             <ul className="space-y-3 text-xs">
               <li className="flex items-center gap-3 text-zinc-400 hover:text-zinc-200 transition-colors">
                 <Phone size={14} className="text-primary flex-shrink-0" />
-                <span>+91 9643766546</span>
+                <a href="tel:+917015902277" className="hover:text-primary transition-colors">+91 70159 02277</a>
               </li>
               <li className="flex items-center gap-3 text-zinc-400 hover:text-zinc-200 transition-colors">
                 <Mail size={14} className="text-primary flex-shrink-0" />

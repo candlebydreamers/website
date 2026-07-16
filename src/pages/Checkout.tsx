@@ -41,9 +41,9 @@ const Checkout = () => {
 
     // Display-only calculations (actual amounts come from server)
     const subtotal = totalPrice;
-    const tax = subtotal * taxRate;
+    const tax = subtotal - (subtotal / (1 + taxRate));
     const shipping = subtotal >= freeShippingThreshold || subtotal === 0 ? 0 : shippingCharge;
-    const grandTotal = subtotal + tax + shipping;
+    const grandTotal = subtotal + shipping;
 
     // Check auth session on mount & fetch settings for display
     useEffect(() => {
@@ -449,8 +449,8 @@ const Checkout = () => {
                                     <span>Subtotal</span>
                                     <span>₹{subtotal.toFixed(2)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>GST / Sales Tax ({(taxRate * 100).toFixed(0)}%)</span>
+                                <div className="flex justify-between text-zinc-550 font-medium">
+                                    <span>GST Included ({(taxRate * 100).toFixed(0)}%)</span>
                                     <span>₹{tax.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between">

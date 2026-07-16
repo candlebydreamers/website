@@ -154,8 +154,8 @@ const ContactUs = () => {
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-0.5">Direct Line</p>
-                                        <a href="tel:+919643766546" className="text-sm font-bold text-zinc-800 hover:text-orange-600 transition-colors">
-                                            +91 9643766546
+                                        <a href="tel:+917015902277" className="text-sm font-bold text-zinc-800 hover:text-orange-600 transition-colors">
+                                            +91 70159 02277
                                         </a>
                                     </div>
                                 </div>

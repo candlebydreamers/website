@@ -137,9 +137,9 @@ Deno.serve(async (req: Request) => {
     const shippingCharge = Number(settingsMap.shipping_charge || "100");
     const freeShippingThreshold = Number(settingsMap.free_shipping_threshold || "1200");
 
-    const tax = subtotal * taxRate;
+    const tax = subtotal - (subtotal / (1 + taxRate));
     const shipping = subtotal >= freeShippingThreshold || subtotal === 0 ? 0 : shippingCharge;
-    const grandTotal = subtotal + tax + shipping;
+    const grandTotal = subtotal + shipping;
     const amountInPaise = Math.round(grandTotal * 100);
 
     if (amountInPaise < 100) {

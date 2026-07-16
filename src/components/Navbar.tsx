@@ -175,7 +175,7 @@ const Navbar = () => {
                 <div className={`fixed top-20 left-4 right-4 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:w-72 pt-2 transition-all duration-200 z-50 ${serviceOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
                   <div className="w-full sm:w-72 bg-white rounded-md border border-zinc-100 shadow-xl p-4 text-zinc-800 font-sans">
                     <a 
-                      href="https://wa.me/919643766546" 
+                      href="https://wa.me/917015902277" 
                       target="_blank" 
                       rel="noopener noreferrer" 
                       className="flex items-center gap-3 py-2.5 border-b border-zinc-100 hover:bg-zinc-50 transition-colors px-2 rounded-sm"
@@ -183,18 +183,18 @@ const Navbar = () => {
                       <img src={whatsappIcon} alt="WhatsApp" className="w-5 h-5 shrink-0 object-contain" />
                       <div className="text-left">
                         <div className="text-[9px] text-zinc-400 font-bold uppercase leading-none">WhatsApp:</div>
-                        <div className="text-xs font-bold text-zinc-800">+91 9643766546</div>
+                        <div className="text-xs font-bold text-zinc-800">+91 70159 02277</div>
                       </div>
                     </a>
                     
                     <a 
-                      href="tel:+919643766546" 
+                      href="tel:+917015902277" 
                       className="flex items-center gap-3 py-2.5 border-b border-zinc-100 hover:bg-zinc-50 transition-colors px-2 rounded-sm"
                     >
                       <Phone size={14} className="text-zinc-500" />
                       <div className="text-left">
                         <div className="text-[9px] text-zinc-400 font-bold uppercase leading-none">Telephone:</div>
-                        <div className="text-xs font-bold text-zinc-800">+91 9643766546</div>
+                        <div className="text-xs font-bold text-zinc-800">+91 70159 02277</div>
                       </div>
                     </a>
 
@@ -502,7 +502,7 @@ const Navbar = () => {
 
       {/* Floating WhatsApp Button */}
       <a
-        href="https://wa.me/919643766546"
+        href="https://wa.me/917015902277"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 duration-300 drop-shadow-xl"

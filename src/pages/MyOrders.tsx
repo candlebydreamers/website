@@ -51,6 +51,7 @@ const MyOrders = () => {
                 .from("orders")
                 .select("*")
                 .eq("user_id", userId)
+                .eq("payment_status", "paid")
                 .order("created_at", { ascending: false });
 
             if (ordersError) throw ordersError;
