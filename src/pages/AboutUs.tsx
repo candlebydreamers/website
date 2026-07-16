@@ -1,11 +1,32 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/FooterSection";
 import SEO from "../components/SEO";
 import banner1 from "@/assets/banner1.png";
-import poster from "@/assets/poster.png";
+import { supabase } from "@/lib/supabaseClient";
 
 const AboutUs = () => {
+    const [purposeImage, setPurposeImage] = useState("");
+
+    useEffect(() => {
+        const fetchPurposeImage = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("settings")
+                    .select("value")
+                    .eq("key", "our_purpose_image")
+                    .single();
+                if (data && data.value) {
+                    setPurposeImage(data.value);
+                }
+            } catch (err) {
+                console.error("Error fetching purpose image:", err);
+            }
+        };
+        fetchPurposeImage();
+    }, []);
+
     return (
         <div className="min-h-screen bg-zinc-50 flex flex-col font-sans selection:bg-orange-500/30">
             <SEO 
@@ -92,25 +113,27 @@ const AboutUs = () => {
             <section className="py-12 md:py-20 bg-white px-4 sm:px-6">
                 <div className="container mx-auto max-w-6xl flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
                     {/* Image Block */}
-                    <div className="flex-1 w-full relative">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/10 to-transparent rounded-2xl -z-10 transform translate-x-3 translate-y-3" />
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            whileInView={{ opacity: 1, scale: 1 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.6 }}
-                            className="aspect-square w-full rounded-2xl overflow-hidden shadow-2xl border border-zinc-200"
-                        >
-                            <img 
-                                src={poster} 
-                                alt="Dreamers Candle Campaign" 
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                            />
-                        </motion.div>
-                    </div>
+                    {purposeImage && (
+                        <div className="flex-1 w-full relative">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/10 to-transparent rounded-2xl -z-10 transform translate-x-3 translate-y-3" />
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6 }}
+                                className="aspect-square w-full rounded-2xl overflow-hidden shadow-2xl border border-zinc-200"
+                            >
+                                <img 
+                                    src={purposeImage} 
+                                    alt="Dreamers Candle Campaign" 
+                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                                />
+                            </motion.div>
+                        </div>
+                    )}
 
                     {/* Content Block */}
-                    <div className="flex-1 space-y-6 lg:pl-4">
+                    <div className={`flex-1 space-y-6 ${purposeImage ? "lg:pl-4" : "max-w-2xl mx-auto text-center"}`}>
                         <span className="text-[10px] font-black uppercase tracking-widest text-orange-655 bg-orange-50 px-2 py-1 rounded">
                             Our Fragrance Ethos
                         </span>

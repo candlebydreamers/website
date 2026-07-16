@@ -31,7 +31,8 @@ import {
     Truck,
     IndianRupee,
     Save,
-    Loader2
+    Loader2,
+    Image
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
@@ -166,6 +167,29 @@ const AdminPanel = () => {
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [settingsLoaded, setSettingsLoaded] = useState(false);
 
+    // Media Management State
+    const [heroSlideshowImages, setHeroSlideshowImages] = useState<string[]>([]);
+    const [ourPurposeImage, setOurPurposeImage] = useState("");
+    const [isSavingMedia, setIsSavingMedia] = useState(false);
+    const [isUploadingHero, setIsUploadingHero] = useState(false);
+    const [isUploadingPurpose, setIsUploadingPurpose] = useState(false);
+
+    // Testimonials State
+    interface Testimonial {
+        id: string;
+        text: string;
+        author: string;
+        location: string;
+        rating: number;
+    }
+    const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+    const [testimonialText, setTestimonialText] = useState("");
+    const [testimonialAuthor, setTestimonialAuthor] = useState("");
+    const [testimonialLocation, setTestimonialLocation] = useState("");
+    const [testimonialRating, setTestimonialRating] = useState(5);
+    const [editingTestimonialId, setEditingTestimonialId] = useState<string | null>(null);
+    const [isSavingTestimonial, setIsSavingTestimonial] = useState(false);
+
     // Product Form State
     const [productName, setProductName] = useState("");
     const [productDescription, setProductDescription] = useState("");
@@ -208,7 +232,8 @@ const AdminPanel = () => {
             fetchOrders(),
             fetchCustomers(),
             fetchReviews(),
-            fetchSettings()
+            fetchSettings(),
+            fetchTestimonials()
         ]);
         setIsLoading(false);
     };
@@ -601,6 +626,86 @@ const AdminPanel = () => {
         }
     };
 
+    const fetchTestimonials = async () => {
+        try {
+            const { data, error } = await supabase
+                .from("testimonials")
+                .select("*")
+                .order("created_at", { ascending: false });
+            if (error) throw error;
+            setTestimonials(data || []);
+        } catch (error) {
+            console.error("Error fetching testimonials:", error);
+        }
+    };
+
+    const handleSaveTestimonial = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!testimonialText.trim() || !testimonialAuthor.trim() || !testimonialLocation.trim()) {
+            toast.error("Please fill in all fields");
+            return;
+        }
+        setIsSavingTestimonial(true);
+        try {
+            if (editingTestimonialId) {
+                const { error } = await supabase
+                    .from("testimonials")
+                    .update({
+                        text: testimonialText.trim(),
+                        author: testimonialAuthor.trim(),
+                        location: testimonialLocation.trim(),
+                        rating: testimonialRating
+                    })
+                    .eq("id", editingTestimonialId);
+                if (error) throw error;
+                toast.success("Testimonial updated successfully");
+            } else {
+                const { error } = await supabase
+                    .from("testimonials")
+                    .insert([{
+                        text: testimonialText.trim(),
+                        author: testimonialAuthor.trim(),
+                        location: testimonialLocation.trim(),
+                        rating: testimonialRating
+                    }]);
+                if (error) throw error;
+                toast.success("Testimonial added successfully");
+            }
+            setTestimonialText("");
+            setTestimonialAuthor("");
+            setTestimonialLocation("");
+            setTestimonialRating(5);
+            setEditingTestimonialId(null);
+            fetchTestimonials();
+        } catch (error) {
+            console.error("Error saving testimonial:", error);
+            toast.error("Failed to save testimonial");
+        } finally {
+            setIsSavingTestimonial(false);
+        }
+    };
+
+    const handleEditTestimonial = (testimonial: Testimonial) => {
+        setEditingTestimonialId(testimonial.id);
+        setTestimonialText(testimonial.text);
+        setTestimonialAuthor(testimonial.author);
+        setTestimonialLocation(testimonial.location);
+        setTestimonialRating(testimonial.rating);
+    };
+
+    const handleDeleteTestimonial = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this testimonial?")) return;
+        try {
+            const { error } = await supabase.from("testimonials").delete().eq("id", id);
+            if (error) throw error;
+            toast.success("Testimonial deleted successfully");
+            fetchTestimonials();
+        } catch (error) {
+            console.error("Error deleting testimonial:", error);
+            toast.error("Failed to delete testimonial");
+        }
+    };
+
     const toggleSize = (size: string) => {
         setProductSizes(prev => 
             prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
@@ -923,6 +1028,21 @@ const AdminPanel = () => {
                 setSettingsShippingCharge(settingsMap.shipping_charge || "100");
                 setSettingsFreeShippingThreshold(settingsMap.free_shipping_threshold || "1200");
                 setSettingsTaxRate(settingsMap.tax_rate || "0.05");
+
+                if (settingsMap.hero_slideshow_images) {
+                    try {
+                        const parsed = JSON.parse(settingsMap.hero_slideshow_images);
+                        if (Array.isArray(parsed)) {
+                            setHeroSlideshowImages(parsed);
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse hero slideshow images:", e);
+                    }
+                }
+                if (settingsMap.our_purpose_image) {
+                    setOurPurposeImage(settingsMap.our_purpose_image);
+                }
+
                 setSettingsLoaded(true);
             }
         } catch (error) {
@@ -979,6 +1099,95 @@ const AdminPanel = () => {
         }
     };
 
+    const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        setIsUploadingHero(true);
+        toast.info("Uploading slideshow image(s)...");
+        for (const file of files) {
+            try {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+                const filePath = `hero/${fileName}`;
+
+                const { data, error } = await supabase.storage
+                    .from('product-images')
+                    .upload(filePath, file);
+
+                if (error) throw error;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('product-images')
+                    .getPublicUrl(filePath);
+
+                setHeroSlideshowImages(prev => [...prev, publicUrl]);
+                toast.success(`Uploaded ${file.name} successfully`);
+            } catch (err: any) {
+                console.error("Upload failed:", err);
+                toast.error(`Failed to upload ${file.name}`);
+            }
+        }
+        setIsUploadingHero(false);
+    };
+
+    const handlePurposeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        setIsUploadingPurpose(true);
+        toast.info("Uploading purpose image...");
+        const file = files[0];
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `purpose/${fileName}`;
+
+            const { data, error } = await supabase.storage
+                .from('product-images')
+                .upload(filePath, file);
+
+            if (error) throw error;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('product-images')
+                .getPublicUrl(filePath);
+
+            setOurPurposeImage(publicUrl);
+            toast.success("Uploaded purpose image successfully");
+        } catch (err: any) {
+            console.error("Upload failed:", err);
+            toast.error("Failed to upload purpose image");
+        }
+        setIsUploadingPurpose(false);
+    };
+
+    const handleSaveMedia = async () => {
+        setIsSavingMedia(true);
+        try {
+            const updates = [
+                { key: "hero_slideshow_images", value: JSON.stringify(heroSlideshowImages) },
+                { key: "our_purpose_image", value: ourPurposeImage }
+            ];
+
+            for (const setting of updates) {
+                const { error } = await supabase
+                    .from("settings")
+                    .update({ value: setting.value })
+                    .eq("key", setting.key);
+                
+                if (error) throw error;
+            }
+
+            toast.success("Media assets saved successfully!");
+        } catch (err: any) {
+            console.error("Error saving media:", err);
+            toast.error("Failed to save media assets");
+        } finally {
+            setIsSavingMedia(false);
+        }
+    };
+
     const handleLogout = () => {
         localStorage.removeItem("isAdminAuthenticated");
         toast.info("Logged out from admin session");
@@ -1024,10 +1233,11 @@ const AdminPanel = () => {
                         { id: "add-products", label: "Add Candles", Icon: PlusCircle },
                         { id: "listed-products", label: "Listed Candles", Icon: Package },
                         { id: "messages", label: "Inquiries", Icon: MessageSquare, section: "Management" },
-                        { id: "reviews", label: "Reviews", Icon: Star },
+                        { id: "reviews", label: "Testimonials", Icon: Star },
                         { id: "customers", label: "Customers", Icon: Users },
                         { id: "orders", label: "Orders", Icon: Package, section: "Storefront" },
-                        { id: "settings", label: "Settings", Icon: Settings, section: "Configuration" }
+                        { id: "settings", label: "Settings", Icon: Settings, section: "Configuration" },
+                        { id: "media", label: "Media Assets", Icon: Image }
                     ].map((item) => (
                         <div key={item.id}>
                             {item.section && (
@@ -1383,56 +1593,164 @@ const AdminPanel = () => {
                         </TabsContent>
 
                         <TabsContent value="reviews" className="space-y-6 mt-0">
+                            {/* Create / Edit Form Card */}
                             <Card className="shadow-sm border-zinc-200">
                                 <CardHeader>
-                                    <CardTitle>Customer Reviews</CardTitle>
-                                    <CardDescription>Manage product reviews from your customers.</CardDescription>
+                                    <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                                        <Star className="w-5 h-5 text-primary fill-primary" /> {editingTestimonialId ? "Edit Testimonial" : "Add New Testimonial"}
+                                    </CardTitle>
+                                    <CardDescription className="text-xs font-semibold text-zinc-400 tracking-wide">
+                                        Create or update testimonials displayed on the storefront home page.
+                                    </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    {reviews.length === 0 ? (
+                                    <form onSubmit={handleSaveTestimonial} className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Author Name</label>
+                                                <Input 
+                                                    value={testimonialAuthor}
+                                                    onChange={(e) => setTestimonialAuthor(e.target.value)}
+                                                    placeholder="e.g. Priya S."
+                                                    className="h-10 text-xs font-bold border-zinc-200 rounded-xl"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Location</label>
+                                                <Input 
+                                                    value={testimonialLocation}
+                                                    onChange={(e) => setTestimonialLocation(e.target.value)}
+                                                    placeholder="e.g. Mumbai, Maharashtra"
+                                                    className="h-10 text-xs font-bold border-zinc-200 rounded-xl"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Rating (Stars)</label>
+                                                <select 
+                                                    value={testimonialRating}
+                                                    onChange={(e) => setTestimonialRating(Number(e.target.value))}
+                                                    className="w-full h-10 px-3 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-800 focus:outline-none focus:border-primary"
+                                                >
+                                                    <option value={5}>5 Stars</option>
+                                                    <option value={4}>4 Stars</option>
+                                                    <option value={3}>3 Stars</option>
+                                                    <option value={2}>2 Stars</option>
+                                                    <option value={1}>1 Star</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Testimonial Text</label>
+                                            <Textarea 
+                                                value={testimonialText}
+                                                onChange={(e) => setTestimonialText(e.target.value)}
+                                                placeholder="Write the customer's quote here..."
+                                                className="min-h-[80px] text-xs font-bold border-zinc-200 rounded-xl resize-none"
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <Button 
+                                                type="submit" 
+                                                disabled={isSavingTestimonial}
+                                                className="bg-primary hover:bg-amber-600 text-white font-black uppercase tracking-widest text-[10px] px-6 py-4 rounded-xl shadow-sm transition-all"
+                                            >
+                                                {isSavingTestimonial ? (
+                                                    <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> Saving...</>
+                                                ) : (
+                                                    <>{editingTestimonialId ? "Update Testimonial" : "Add Testimonial"}</>
+                                                )}
+                                            </Button>
+                                            {editingTestimonialId && (
+                                                <Button 
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setEditingTestimonialId(null);
+                                                        setTestimonialText("");
+                                                        setTestimonialAuthor("");
+                                                        setTestimonialLocation("");
+                                                        setTestimonialRating(5);
+                                                    }}
+                                                    className="border-zinc-200 text-zinc-650 hover:bg-zinc-50 font-black uppercase tracking-widest text-[10px] px-6 py-4 rounded-xl"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </form>
+                                </CardContent>
+                            </Card>
+
+                            {/* Testimonials List Card */}
+                            <Card className="shadow-sm border-zinc-200">
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Active Testimonials</CardTitle>
+                                        <CardDescription className="text-xs font-semibold text-zinc-400 tracking-wide">
+                                            These testimonials are displayed live on the storefront homepage.
+                                        </CardDescription>
+                                    </div>
+                                    <div className="bg-zinc-100 text-zinc-800 px-3 py-1 rounded-full text-xs font-bold font-mono">
+                                        Total: {testimonials.length}
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    {testimonials.length === 0 ? (
                                         <div className="text-center py-16 bg-zinc-50 rounded-2xl border border-zinc-100 border-dashed">
                                             <Star className="mx-auto text-zinc-300 mb-3" size={32} />
-                                            <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-600 mb-2">No Reviews Found</h4>
+                                            <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-600 mb-2">No Testimonials Found</h4>
                                             <p className="text-[10px] text-zinc-400 uppercase tracking-wider">
-                                                When customers leave reviews, they will appear here.
+                                                Add testimonials using the form above to see them here.
                                             </p>
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {reviews.map((review) => (
-                                                <div key={review.id} className="bg-white border border-zinc-200 rounded-2xl p-5 hover:shadow-md transition-shadow flex flex-col justify-between">
+                                            {testimonials.map((testimonial) => (
+                                                <div key={testimonial.id} className="bg-white border border-zinc-200 rounded-2xl p-5 hover:shadow-md transition-shadow flex flex-col justify-between">
                                                     <div>
                                                         <div className="flex items-start justify-between mb-3">
                                                             <div>
-                                                                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 line-clamp-1">{review.products?.name || "Unknown Product"}</h4>
-                                                                <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mt-1">By {review.customer_name}</p>
+                                                                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900">{testimonial.author}</h4>
+                                                                <p className="text-[9px] text-zinc-400 uppercase tracking-wider font-bold mt-1">{testimonial.location}</p>
                                                             </div>
                                                             <div className="flex items-center gap-0.5 shrink-0">
                                                                 {[1, 2, 3, 4, 5].map((star) => (
                                                                     <Star 
                                                                         key={star} 
-                                                                        size={12} 
-                                                                        className={star <= review.rating ? "fill-amber-400 text-amber-400" : "fill-zinc-100 text-zinc-200"} 
+                                                                        size={10} 
+                                                                        className={star <= testimonial.rating ? "fill-amber-400 text-amber-400" : "fill-zinc-100 text-zinc-200"} 
                                                                     />
                                                                 ))}
                                                             </div>
                                                         </div>
-                                                        <p className="text-xs text-zinc-600 mb-4 line-clamp-4 leading-relaxed">
-                                                            "{review.comment}"
+                                                        <p className="text-xs text-zinc-600 mb-4 leading-relaxed italic">
+                                                            "{testimonial.text}"
                                                         </p>
                                                     </div>
                                                     <div className="flex items-center justify-between pt-3 border-t border-zinc-100 mt-auto">
                                                         <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-400">
-                                                            {new Date(review.created_at).toLocaleDateString()}
+                                                            Added on {new Date(testimonial.created_at || "").toLocaleDateString()}
                                                         </span>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="sm" 
-                                                            onClick={() => handleDeleteReview(review.id)}
-                                                            className="h-7 px-2 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                                                        >
-                                                            <Trash2 size={12} className="mr-1" /> Delete
-                                                        </Button>
+                                                        <div className="flex gap-2">
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                onClick={() => handleEditTestimonial(testimonial)}
+                                                                className="h-7 px-2.5 text-[10px] font-bold uppercase tracking-wider text-zinc-650 hover:bg-zinc-50 rounded-lg"
+                                                            >
+                                                                Edit
+                                                            </Button>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                onClick={() => handleDeleteTestimonial(testimonial.id)}
+                                                                className="h-7 px-2.5 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                                            >
+                                                                Delete
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}
@@ -2281,9 +2599,9 @@ const AdminPanel = () => {
                                                         <span>Subtotal (example)</span>
                                                         <span>₹1,000.00</span>
                                                     </div>
-                                                    <div className="flex justify-between">
-                                                        <span>GST ({(parseFloat(settingsTaxRate || "0") * 100).toFixed(0)}%)</span>
-                                                        <span>₹{(1000 * parseFloat(settingsTaxRate || "0")).toFixed(2)}</span>
+                                                    <div className="flex justify-between text-zinc-500 font-medium">
+                                                        <span>GST Included ({(parseFloat(settingsTaxRate || "0") * 100).toFixed(0)}%)</span>
+                                                        <span>₹{(1000 - (1000 / (1 + parseFloat(settingsTaxRate || "0")))).toFixed(2)}</span>
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span>Delivery</span>
@@ -2292,7 +2610,7 @@ const AdminPanel = () => {
                                                     <div className="flex justify-between text-sm font-black text-zinc-900 pt-2 border-t border-zinc-200">
                                                         <span>Total</span>
                                                         <span className="text-primary">
-                                                            ₹{(1000 + (1000 * parseFloat(settingsTaxRate || "0")) + (1000 >= parseFloat(settingsFreeShippingThreshold || "0") ? 0 : parseFloat(settingsShippingCharge || "0"))).toFixed(2)}
+                                                            ₹{(1000 + (1000 >= parseFloat(settingsFreeShippingThreshold || "0") ? 0 : parseFloat(settingsShippingCharge || "0"))).toFixed(2)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -2312,6 +2630,137 @@ const AdminPanel = () => {
                                             </Button>
                                         </>
                                     )}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* ===== MEDIA TAB ===== */}
+                        <TabsContent value="media" className="space-y-6 mt-0">
+                            <Card className="shadow-sm border-zinc-200">
+                                <CardHeader>
+                                    <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                                        <Image className="w-5 h-5 text-primary" /> Media Assets Management
+                                    </CardTitle>
+                                    <CardDescription className="text-xs font-semibold text-zinc-400 tracking-wide">
+                                        Upload and customize the hero banners slideshow and the brand purpose/about us page illustration.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-8">
+                                    {/* Hero Slideshow Section */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-sm font-black uppercase tracking-wide text-zinc-800">Hero Slideshow Banners</h3>
+                                        <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Recommended Aspect Ratio: 1920 x 820. Multi-upload supported.</p>
+                                        
+                                        {/* Current Banners Grid */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            {heroSlideshowImages.map((imgUrl, idx) => (
+                                                <div key={idx} className="relative aspect-[1920/820] rounded-xl overflow-hidden border border-zinc-200 group bg-zinc-950">
+                                                    <img src={imgUrl} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <button 
+                                                            onClick={() => setHeroSlideshowImages(prev => prev.filter((_, i) => i !== idx))}
+                                                            className="p-2 bg-red-600 hover:bg-red-750 text-white rounded-full transition-all hover:scale-110"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                    <span className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm text-[8px] font-black text-white px-2 py-0.5 rounded-full">
+                                                        Slide {idx + 1}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            
+                                            {/* Empty State */}
+                                            {heroSlideshowImages.length === 0 && (
+                                                <div className="sm:col-span-3 border border-dashed border-zinc-200 rounded-xl p-8 text-center text-zinc-400">
+                                                    <Image className="mx-auto w-8 h-8 mb-2 stroke-1" />
+                                                    <p className="text-xs font-semibold">No custom banners uploaded. Showing default system banners.</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Upload Button */}
+                                        <div className="flex items-center gap-4">
+                                            <label className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer shadow-sm transition-all active:scale-[0.98]">
+                                                {isUploadingHero ? (
+                                                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading...</>
+                                                ) : (
+                                                    <><Upload size={14} /> Upload Banner(s)</>
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    multiple 
+                                                    accept="image/*" 
+                                                    onChange={handleHeroUpload} 
+                                                    disabled={isUploadingHero} 
+                                                    className="hidden" 
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-zinc-150" />
+
+                                    {/* Purpose / About Us Section */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-sm font-black uppercase tracking-wide text-zinc-800">Our Purpose & About Us Image</h3>
+                                        <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Recommended Aspect Ratio: 1:1 Square. Updating this changes it on both the Home (Purpose) and About pages.</p>
+                                        
+                                        {/* Current Purpose Image Preview */}
+                                        <div className="relative w-40 h-40 rounded-xl overflow-hidden border border-zinc-200 group bg-zinc-50">
+                                            {ourPurposeImage ? (
+                                                <>
+                                                    <img src={ourPurposeImage} alt="Purpose / About Us" className="w-full h-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <button 
+                                                            onClick={() => setOurPurposeImage("")}
+                                                            className="p-2 bg-red-600 hover:bg-red-750 text-white rounded-full transition-all hover:scale-110"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 text-center p-4">
+                                                    <Image size={24} className="stroke-1 mb-1 text-zinc-300" />
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Default Poster Image Active</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Upload Button */}
+                                        <div className="flex items-center gap-4">
+                                            <label className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer shadow-sm transition-all active:scale-[0.98]">
+                                                {isUploadingPurpose ? (
+                                                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading...</>
+                                                ) : (
+                                                    <><Upload size={14} /> Upload Image</>
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    onChange={handlePurposeUpload} 
+                                                    disabled={isUploadingPurpose} 
+                                                    className="hidden" 
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-zinc-150" />
+
+                                    {/* Save Button */}
+                                    <Button
+                                        onClick={handleSaveMedia}
+                                        disabled={isSavingMedia || isUploadingHero || isUploadingPurpose}
+                                        className="bg-primary hover:bg-amber-600 text-white font-black uppercase tracking-widest text-[11px] px-8 py-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                                    >
+                                        {isSavingMedia ? (
+                                            <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving Assets...</>
+                                        ) : (
+                                            <><Save className="w-4 h-4 mr-2" /> Save Media Assets</>
+                                        )}
+                                    </Button>
                                 </CardContent>
                             </Card>
                         </TabsContent>

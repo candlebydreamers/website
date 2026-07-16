@@ -1,25 +1,44 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import bannerImage from "@/assets/banner1.png";
-import bannerImage2 from "@/assets/banner2.png";
-import bannerImage3 from "@/assets/banner3.png";
 
-const slides = [
-  { image: bannerImage },
-  { image: bannerImage2 },
-  { image: bannerImage3 },
-];
+import { supabase } from "@/lib/supabaseClient";
 
 const HeroSection = () => {
+  const [slides, setSlides] = useState<string[]>([]);
   const [current, setCurrent] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const fetchHeroImages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "hero_slideshow_images")
+          .single();
+        if (data && data.value) {
+          const parsed = JSON.parse(data.value);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSlides(parsed);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching hero slideshow images:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchHeroImages();
+  }, []);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
     const timer = setInterval(() => {
       setCurrent((prev) => (prev + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
   const handlePrev = () => {
     setCurrent((prev) => (prev - 1 + slides.length) % slides.length);
@@ -28,6 +47,17 @@ const HeroSection = () => {
   const handleNext = () => {
     setCurrent((prev) => (prev + 1) % slides.length);
   };
+
+  if (slides.length === 0) {
+    if (isLoading) {
+      return (
+        <div className="relative w-full overflow-hidden bg-zinc-950 flex items-center justify-center" style={{ aspectRatio: '1923 / 817' }}>
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <section className="relative w-full overflow-hidden bg-zinc-950">
@@ -43,7 +73,7 @@ const HeroSection = () => {
             className="absolute inset-0 w-full h-full"
           >
             <img
-              src={slides[current].image}
+              src={slides[current]}
               alt={`Banner ${current + 1}`}
               className="w-full h-full object-contain"
             />
